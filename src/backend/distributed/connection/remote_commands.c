@@ -781,6 +781,7 @@ WaitForAllConnections(List *connectionList, bool raiseInterrupts)
 
 		while (pendingConnectionsStartIndex < totalConnectionCount)
 		{
+			bool cancellationReceived = false;
 			int eventIndex = 0;
 			int eventCount = 0;
 			long timeout = -1;
@@ -837,9 +838,9 @@ WaitForAllConnections(List *connectionList, bool raiseInterrupts)
 					if (InterruptHoldoffCount > 0 && (QueryCancelPending ||
 													  ProcDiePending))
 					{
-						/* return immediately in case of cancellation */
-						FreeWaitEventSet(waitEventSet);
-						return;
+						/* break out of event loop immediately in case of cancellation */
+						cancellationReceived = true;
+						break;
 					}
 
 					continue;
@@ -903,6 +904,11 @@ WaitForAllConnections(List *connectionList, bool raiseInterrupts)
 					 */
 					rebuildWaitEventSet = true;
 				}
+			}
+
+			if (cancellationReceived)
+			{
+				break;
 			}
 
 			/* move non-ready connections to the back of the array */
